@@ -74,78 +74,50 @@ export function logSushiPerSecond(event: LogSushiPerSecond): void {
 }
 
 export function deposit(event: Deposit): void {
-  /*log.info('[MiniChef] Log Deposit {} {} {} {}', [
-    event.params.user.toHex(),
-    event.params.pid.toString(),
-    event.params.amount.toString(),
-    event.params.to.toHex(),
-  ])*/
-  const pool = getPool(event.params.pid, event.block)
-  const user = getUser(event.params.to, event.block)
-  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
 
+  const pool = getPool(event.params.pid, event.block)
   pool.slpBalance = pool.slpBalance.plus(event.params.amount)
   pool.save()
 
+  const user = getUser(event.params.to)
+  user.save();
+
+  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
   userpool.amount = userpool.amount.plus(event.params.amount)
   userpool.rewardDebt = userpool.rewardDebt.plus(event.params.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION))
   userpool.save()
 }
 
 export function withdraw(event: Withdraw): void {
-  /*log.info('[MiniChef] Log Withdraw {} {} {} {}', [
-    event.params.user.toHex(),
-    event.params.pid.toString(),
-    event.params.amount.toString(),
-    event.params.to.toHex(),
-  ])*/
 
   const pool = getPool(event.params.pid, event.block)
-  const user = getUser(event.params.user, event.block)
-  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
-
   pool.slpBalance = pool.slpBalance.minus(event.params.amount)
   pool.save()
 
+  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
   userpool.amount = userpool.amount.minus(event.params.amount)
   userpool.rewardDebt = userpool.rewardDebt.minus(event.params.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION))
   userpool.save()
 }
 
 export function emergencyWithdraw(event: EmergencyWithdraw): void {
-  /*log.info('[MiniChef] Log Emergency Withdraw {} {} {} {}', [
-    event.params.user.toHex(),
-    event.params.pid.toString(),
-    event.params.amount.toString(),
-    event.params.to.toHex(),
-  ])*/
 
   const pool = getPool(event.params.pid, event.block)
-  const user = getUser(event.params.user, event.block)
-  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
-
   pool.slpBalance = pool.slpBalance.minus(event.params.amount)
   pool.save()
 
+  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
   userpool.amount = ZERO_BI
   userpool.rewardDebt = ZERO_BI
   userpool.save()
 }
 
 export function harvest(event: Harvest): void {
-  /*log.info('[MiniChef] Log Withdraw {} {} {}', [
-    event.params.user.toHex(),
-    event.params.pid.toString(),
-    event.params.amount.toString(),
-  ])*/
 
   const pool = getPool(event.params.pid, event.block)
-  const user = getUser(event.params.user, event.block)
-  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
+  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
 
-  const accumulatedSushi = userpool.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION)
-
-  userpool.rewardDebt = accumulatedSushi
+  userpool.rewardDebt = userpool.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION)
   userpool.sushiHarvested = userpool.sushiHarvested.plus(event.params.amount)
   userpool.save()
 }

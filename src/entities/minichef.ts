@@ -14,7 +14,6 @@ export function getMiniChef(block: ethereum.Block): MiniChef {
     miniChef.poolCount = ZERO_BI
     miniChef.timestamp = block.timestamp
     miniChef.block = block.number
-    miniChef.save()
   }
 
   return miniChef as MiniChef

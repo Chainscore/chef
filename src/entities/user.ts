@@ -4,12 +4,11 @@ import { getPool } from "./pool";
 
 import { User, UserPool } from "../../generated/schema";
 
-export function getUser(address: Address, block: ethereum.Block): User {
+export function getUser(address: Address): User {
 	let user = User.load(address.toHex());
 
 	if (user === null) {
 		user = new User(address.toHex());
-		user.save();
 	}
 
 	return user as User;
@@ -29,7 +28,7 @@ export function getUserPool(
 
 	if (userpool === null) {
 		userpool = new UserPool(id);
-		userpool.user = getUser(user, block).id;
+		userpool.user = getUser(user).id;
 		userpool.pool = getPool(pid, block).id;
 		userpool.amount = ZERO_BI;
 		userpool.rewardDebt = ZERO_BI;
