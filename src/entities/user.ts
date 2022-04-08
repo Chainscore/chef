@@ -23,16 +23,17 @@ export function getUserPool(
 		.toHex()
 		.concat("-")
 		.concat(pid.toString());
-    
+
 	let userpool = UserPool.load(id);
 
 	if (userpool === null) {
 		userpool = new UserPool(id);
 		userpool.user = getUser(user).id;
 		userpool.pool = getPool(pid, block).id;
+
 		userpool.amount = ZERO_BI;
 		userpool.rewardDebt = ZERO_BI;
-		userpool.sushiHarvested = ZERO_BI;
+
 		userpool.timestamp = block.timestamp;
 		userpool.block = block.number;
 

@@ -1,123 +1,183 @@
-import { ACC_SUSHI_PRECISION, ONE_BI, ZERO_BI } from '../entities/const'
+import { ACC_SUSHI_PRECISION, ONE_BI, ZERO_BI } from "../entities/const";
 import {
-  Deposit,
-  EmergencyWithdraw,
-  Harvest,
-  LogPoolAddition,
-  LogSetPool,
-  LogSushiPerSecond,
-  LogUpdatePool,
-  Withdraw,
-} from '../../generated/MiniChef/MiniChef'
-import { getMiniChef, getPool, getRewarder, getUser, getUserPool } from '../entities'
+	Deposit,
+	EmergencyWithdraw,
+	Harvest,
+	LogPoolAddition,
+	LogSetPool,
+	LogSushiPerSecond,
+	LogUpdatePool,
+	Withdraw,
+} from "../../generated/MiniChef/MiniChef";
+import {
+	getRewarderPool,
+	getPool,
+	getRewarder,
+	getUser,
+	getUserPool,
+} from "../entities";
 
-import { log, Address } from '@graphprotocol/graph-ts'
+import { log, Address } from "@graphprotocol/graph-ts";
 
 export function logPoolAddition(event: LogPoolAddition): void {
+  log.info('[MiniChef] Log Set Pool {} {} {} {}', [
+    event.params.pid.toString(),
+    event.params.allocPoint.toString(),
+    event.params.lpToken.toHex(),
+    event.params.rewarder.toHex()
+  ])
+  // Chef rewarder
+  let rewarder = getRewarder(event.address, event.block);
+  rewarder.pool = event.params.pid.toString();
+  rewarder.save();
 
-  const miniChef = getMiniChef(event.block)
-  const pool = getPool(event.params.pid, event.block)
+  let rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
+  rewarderPool.allocation = event.params.allocPoint;
+  rewarderPool.save()
 
-  const rewarder = getRewarder(event.params.rewarder, event.block)
-  pool.rewarder = rewarder.id
-  pool.pair = event.params.lpToken
-  pool.allocPoint = event.params.allocPoint
-  pool.save()
+  // 2nd token rewarder
+  const tokenRewarder = getRewarder(event.params.rewarder, event.block);
+  tokenRewarder.pool = event.params.pid.toString();
+  tokenRewarder.save();
 
-  miniChef.totalAllocPoint = miniChef.totalAllocPoint.plus(pool.allocPoint)
-  miniChef.poolCount = miniChef.poolCount.plus(ONE_BI)
-  miniChef.save()
+  let tokenRewarderPool = getRewarderPool(event.params.rewarder, event.params.pid, event.block);
+  tokenRewarderPool.save()
 }
 
 export function logSetPool(event: LogSetPool): void {
-  /*log.info('[MiniChef] Log Set Pool {} {} {} {}', [
+	log.info('[MiniChef] Log Set Pool {} {} {} {}', [
     event.params.pid.toString(),
     event.params.allocPoint.toString(),
     event.params.rewarder.toHex(),
     event.params.overwrite == true ? 'true' : 'false',
-  ])*/
+  ])
 
-  const miniChef = getMiniChef(event.block)
-  const pool = getPool(event.params.pid, event.block)
+  // Chef rewarder
+  let rewarder = getRewarder(event.address, event.block);
+  rewarder.pool = event.params.pid.toString();
+  rewarder.save();
 
-  if (event.params.overwrite == true) {
-    const rewarder = getRewarder(event.params.rewarder, event.block)
-    pool.rewarder = rewarder.id
-  }
+  let rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
+  rewarderPool.allocation = event.params.allocPoint;
+  rewarderPool.save()
 
-  miniChef.totalAllocPoint = miniChef.totalAllocPoint.plus(event.params.allocPoint.minus(pool.allocPoint))
-  miniChef.save()
-  pool.allocPoint = event.params.allocPoint
-  pool.save()
+  // 2nd token rewarder
+  const tokenRewarder = getRewarder(event.params.rewarder, event.block);
+  tokenRewarder.pool = event.params.pid.toString();
+  tokenRewarder.save();
+
+  let tokenRewarderPool = getRewarderPool(event.params.rewarder, event.params.pid, event.block);
+  tokenRewarderPool.save()
 }
 
 export function logUpdatePool(event: LogUpdatePool): void {
-  /*log.info('[MiniChef] Log Update Pool {} {} {} {}', [
+	/*log.info('[MiniChef] Log Update Pool {} {} {} {}', [
     event.params.pid.toString(),
     event.params.lastRewardTime.toString(), //uint64, I think this is Decimal but not sure
     event.params.lpSupply.toString(),
     event.params.accSushiPerShare.toString(),
   ])*/
-  const pool = getPool(event.params.pid, event.block)
-  pool.accSushiPerShare = event.params.accSushiPerShare
-  pool.lastRewardTime = event.params.lastRewardTime
+  const rewarder = getRewarder(event.address, event.block);
+
+  const rewarderPool = getRewarderPool(
+	event.address,
+		event.params.pid,
+		event.block
+	);
+	rewarderPool.accTokenPerShare = event.params.accSushiPerShare;
+	rewarderPool.lastRewardPoint = event.params.lastRewardTime;
+	rewarderPool.save();
+
+  const pool = getPool(event.params.pid, event.block);
+  pool.slpBalance = event.params.lpSupply;
   pool.save()
 }
 
 export function logSushiPerSecond(event: LogSushiPerSecond): void {
-  //log.info('[MiniChef] Log Sushi Per Second {}', [event.params.sushiPerSecond.toString()])
+	//log.info('[MiniChef] Log Sushi Per Second {}', [event.params.sushiPerSecond.toString()])
 
-  const miniChef = getMiniChef(event.block)
-
-  miniChef.sushiPerSecond = event.params.sushiPerSecond
-  miniChef.save()
+	// rewarder is masterchef/minichef
+	const rewarder = getRewarder(event.address, event.block);
+	rewarder.rewardPerPoint = event.params.sushiPerSecond;
+	rewarder.save();
 }
 
 export function deposit(event: Deposit): void {
+	const pool = getPool(event.params.pid, event.block);
+	pool.slpBalance = pool.slpBalance.plus(event.params.amount);
+	pool.save();
 
-  const pool = getPool(event.params.pid, event.block)
-  pool.slpBalance = pool.slpBalance.plus(event.params.amount)
-  pool.save()
+	const user = getUser(event.params.to);
+	user.save();
 
-  const user = getUser(event.params.to)
-  user.save();
+	const rewarderPool = getRewarderPool(event.address, event.params.pid, event.block)
 
-  const userpool = getUserPool(Address.fromString(user.id), event.params.pid, event.block);
-  userpool.amount = userpool.amount.plus(event.params.amount)
-  userpool.rewardDebt = userpool.rewardDebt.plus(event.params.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION))
-  userpool.save()
+	const userpool = getUserPool(
+		event.params.to,
+		event.params.pid,
+		event.block
+	);
+	userpool.amount = userpool.amount.plus(event.params.amount);
+	userpool.rewardDebt = userpool.rewardDebt.plus(
+		event.params.amount
+			.times(rewarderPool.accTokenPerShare)
+			.div(ACC_SUSHI_PRECISION)
+	);
+	userpool.save();
 }
 
 export function withdraw(event: Withdraw): void {
+	const pool = getPool(event.params.pid, event.block);
+	pool.slpBalance = pool.slpBalance.minus(event.params.amount);
+	pool.save();
 
-  const pool = getPool(event.params.pid, event.block)
-  pool.slpBalance = pool.slpBalance.minus(event.params.amount)
-  pool.save()
+  const rewarderPool = getRewarderPool(event.address, event.params.pid, event.block)
 
-  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
-  userpool.amount = userpool.amount.minus(event.params.amount)
-  userpool.rewardDebt = userpool.rewardDebt.minus(event.params.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION))
-  userpool.save()
+	const userpool = getUserPool(
+		event.params.user,
+		event.params.pid,
+		event.block
+	);
+	userpool.amount = userpool.amount.minus(event.params.amount);
+	userpool.rewardDebt = userpool.rewardDebt.minus(
+		event.params.amount
+			.times(rewarderPool.accTokenPerShare)
+			.div(ACC_SUSHI_PRECISION)
+	);
+	userpool.save();
 }
 
 export function emergencyWithdraw(event: EmergencyWithdraw): void {
+	const pool = getPool(event.params.pid, event.block);
+	pool.slpBalance = pool.slpBalance.minus(event.params.amount);
+	pool.save();
 
-  const pool = getPool(event.params.pid, event.block)
-  pool.slpBalance = pool.slpBalance.minus(event.params.amount)
-  pool.save()
-
-  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
-  userpool.amount = ZERO_BI
-  userpool.rewardDebt = ZERO_BI
-  userpool.save()
+	const userpool = getUserPool(
+		event.params.user,
+		event.params.pid,
+		event.block
+	);
+	userpool.amount = ZERO_BI;
+	userpool.rewardDebt = ZERO_BI;
+	userpool.save();
 }
 
 export function harvest(event: Harvest): void {
+	// rewarder is masterchef/minichef
+	const rewarder = getRewarder(event.address, event.block);
+	const rewarderPool = getRewarderPool(
+		event.address,
+		event.params.pid,
+		event.block
+	);
 
-  const pool = getPool(event.params.pid, event.block)
-  const userpool = getUserPool(Address.fromString(event.params.user.toString()), event.params.pid, event.block);
-
-  userpool.rewardDebt = userpool.amount.times(pool.accSushiPerShare).div(ACC_SUSHI_PRECISION)
-  userpool.sushiHarvested = userpool.sushiHarvested.plus(event.params.amount)
-  userpool.save()
+	const userpool = getUserPool(
+		event.params.user,
+		event.params.pid,
+		event.block
+	);
+	userpool.rewardDebt = userpool.amount
+		.times(rewarderPool.accTokenPerShare)
+		.div(ACC_SUSHI_PRECISION);
+	userpool.save();
 }

@@ -1,4 +1,4 @@
-specVersion: 0.0.6
+specVersion: 0.0.4
 description: MiniChef
 repository: https://github.com/sushiswap/sushiswap-subgraph
 schema:
@@ -9,7 +9,7 @@ dataSources:
     network: {{ network }}
     source:
       address: '{{ address }}'
-      abi: MiniChef
+      abi: Chef
       startBlock: {{ startBlock }}
     mapping:
       kind: ethereum/events
@@ -17,23 +17,21 @@ dataSources:
       language: wasm/assemblyscript
       file: ./src/mappings/minichef.ts
       entities:
-        - MiniChef
+        - Chef
         - Pool
         - User
         - Rewarder
       abis:
-        - name: MiniChef
-          file: ./packages/abis/MiniChef.json
-        - name: ComplexRewarderTime
-          file: ./packages/abis/ComplexRewarderTime.json
-        - name: CloneRewarderTime
-          file: ./packages/abis/CloneRewarderTime.json
+        - name: Chef
+          file: ./packages/abis/Chef.json
+        - name: Rewarder
+          file: ./packages/abis/Rewarder.json
         - name: Factory
-          file: ../../node_modules/@sushiswap/core/build/abi/UniswapV2Factory.json
+          file: ./node_modules/@sushiswap/core/build/abi/UniswapV2Factory.json
         - name: Pair
-          file: ../../node_modules/@sushiswap/core/build/abi/UniswapV2Pair.json
+          file: ./node_modules/@sushiswap/core/build/abi/UniswapV2Pair.json
         - name: ERC20
-          file: ../../node_modules/@sushiswap/core/build/abi/ERC20.json
+          file: ./node_modules/@sushiswap/core/build/abi/ERC20.json
       eventHandlers:
         - event: Deposit(indexed address,indexed uint256,uint256,indexed address)
           handler: deposit
@@ -53,10 +51,10 @@ dataSources:
           handler: logSushiPerSecond
 templates:
   - kind: ethereum/contract
-    name: ComplexRewarderTime
+    name: Rewarder
     network: {{ network }}
     source:
-      abi: ComplexRewarderTime
+      abi: Rewarder
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.5
@@ -65,8 +63,8 @@ templates:
       entities:
         - Rewarder
       abis:
-        - name: ComplexRewarderTime
-          file: ./packages/abis/ComplexRewarderTime.json
+        - name: Rewarder
+          file: ./packages/abis/Rewarder.json
       eventHandlers:
         - event: LogRewardPerSecond(uint256)
           handler: logRewardPerSecond
@@ -74,22 +72,3 @@ templates:
           handler: logPoolAddition
         - event: LogSetPool(indexed uint256,uint256)
           handler: logSetPool
-
-  - kind: ethereum/contract
-    name: CloneRewarderTime
-    network: {{ network }}
-    source:
-      abi: CloneRewarderTime
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.5
-      language: wasm/assemblyscript
-      file: ./src/mappings/clone-rewarder.ts
-      entities:
-        - Rewarder
-      abis:
-        - name: CloneRewarderTime
-          file: ./packages/abis/CloneRewarderTime.json
-      eventHandlers:
-        - event: LogRewardPerSecond(uint256)
-          handler: logRewardPerSecond
