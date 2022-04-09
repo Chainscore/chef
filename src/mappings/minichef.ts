@@ -28,8 +28,9 @@ export function logPoolAddition(event: LogPoolAddition): void {
   ])
   // Chef rewarder
   let rewarder = getRewarder(event.address, event.block);
-  rewarder.pool = event.params.pid.toString();
+//   rewarder.pool = event.params.pid.toString();
   rewarder.save();
+
 
   let rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
   rewarderPool.allocation = event.params.allocPoint;
@@ -37,11 +38,17 @@ export function logPoolAddition(event: LogPoolAddition): void {
 
   // 2nd token rewarder
   const tokenRewarder = getRewarder(event.params.rewarder, event.block);
-  tokenRewarder.pool = event.params.pid.toString();
+//   tokenRewarder.pool = event.params.pid.toString();
   tokenRewarder.save();
 
   let tokenRewarderPool = getRewarderPool(event.params.rewarder, event.params.pid, event.block);
   tokenRewarderPool.save()
+
+  const pool = getPool(event.params.pid, event.block);
+  pool.sushiRewarder = rewarderPool.id;
+  pool.tokenRewarder = tokenRewarderPool.id;
+  pool.lpToken = event.params.lpToken;
+  pool.save();
 }
 
 export function logSetPool(event: LogSetPool): void {
@@ -54,8 +61,9 @@ export function logSetPool(event: LogSetPool): void {
 
   // Chef rewarder
   let rewarder = getRewarder(event.address, event.block);
-  rewarder.pool = event.params.pid.toString();
+//   rewarder.pool = event.params.pid.toString();
   rewarder.save();
+
 
   let rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
   rewarderPool.allocation = event.params.allocPoint;
@@ -63,11 +71,16 @@ export function logSetPool(event: LogSetPool): void {
 
   // 2nd token rewarder
   const tokenRewarder = getRewarder(event.params.rewarder, event.block);
-  tokenRewarder.pool = event.params.pid.toString();
+//   tokenRewarder.pool = event.params.pid.toString();
   tokenRewarder.save();
 
   let tokenRewarderPool = getRewarderPool(event.params.rewarder, event.params.pid, event.block);
   tokenRewarderPool.save()
+
+  const pool = getPool(event.params.pid, event.block);
+  pool.sushiRewarder = rewarderPool.id;
+  pool.tokenRewarder = tokenRewarderPool.id;
+  pool.save();
 }
 
 export function logUpdatePool(event: LogUpdatePool): void {
@@ -77,10 +90,10 @@ export function logUpdatePool(event: LogUpdatePool): void {
     event.params.lpSupply.toString(),
     event.params.accSushiPerShare.toString(),
   ])*/
-  const rewarder = getRewarder(event.address, event.block);
+//   const rewarder = getRewarder(event.address, event.block);
 
   const rewarderPool = getRewarderPool(
-	event.address,
+		event.address,
 		event.params.pid,
 		event.block
 	);

@@ -1,5 +1,5 @@
 import { LogRewardPerSecond, LogPoolAddition, LogSetPool } from '../../generated/MiniChef/CloneRewarderTime'
-import { getRewarder, getRewarderPool } from '../entities'
+import { getRewarder, getRewarderPool, getPool } from '../entities'
 import { log } from '@graphprotocol/graph-ts'
 
 export function logRewardPerSecond(event: LogRewardPerSecond): void {
@@ -13,21 +13,29 @@ export function logPoolAddition(event: LogPoolAddition): void {
   log.info('[MiniChef:Rewarder] Log Reward Per Second {}', [event.params.pid.toString()])
 
   const rewarder = getRewarder(event.address, event.block)
-  const pool = getRewarderPool(event.address, event.params.pid, event.block);
+  const rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
 
-  pool.allocation = event.params.allocPoint
-  pool.save()
+  rewarderPool.allocation = event.params.allocPoint
+  rewarderPool.save()
 
-  rewarder.totalAllocation = rewarder.totalAllocation.plus(pool.allocation)
+  rewarder.totalAllocation = rewarder.totalAllocation.plus(rewarderPool.allocation)
   rewarder.save()
+
+  const pool = getPool(event.params.pid, event.block);
+  pool.tokenRewarder = rewarder.id;
+  pool.save()
 }
 
 export function logSetPool(event: LogSetPool): void {
   const rewarder = getRewarder(event.address, event.block)
-  const pool = getRewarderPool(event.address, event.params.pid, event.block);
+  const rewarderPool = getRewarderPool(event.address, event.params.pid, event.block);
 
-  rewarder.totalAllocation = rewarder.totalAllocation.plus(event.params.allocPoint.minus(pool.allocation))
+  rewarder.totalAllocation = rewarder.totalAllocation.plus(event.params.allocPoint.minus(rewarderPool.allocation))
   rewarder.save()
-  pool.allocation = event.params.allocPoint
+  rewarderPool.allocation = event.params.allocPoint
+  rewarderPool.save()
+
+  const pool = getPool(event.params.pid, event.block);
+  pool.tokenRewarder = rewarder.id;
   pool.save()
 }

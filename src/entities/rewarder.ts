@@ -1,15 +1,8 @@
 import {
-	ADDRESS_ZERO,
 	ZERO_BI,
-	ONE_BI,
-	COMPLEX_REWARDERS,
-	CLONE_REWARDERS_DUAL,
-	NATIVE,
-	MASTERCHEF,
-	MASTERCHEFV2,
-	MINICHEFS,
+	ONE_BI
 } from "./const";
-import { Address, ethereum, BigInt } from "@graphprotocol/graph-ts";
+import { Address, ethereum, BigInt, dataSource } from "@graphprotocol/graph-ts";
 
 import { Rewarder as RewarderTemplate } from "../../generated/templates";
 import { Rewarder as RewarderContract } from "../../generated/MiniChef/Rewarder";
@@ -21,84 +14,65 @@ export function getRewarder(address: Address, block: ethereum.Block): Rewarder {
 	if (rewarder === null) {
 		rewarder = new Rewarder(address.toHex());
 		const rewarderContract = RewarderContract.bind(address);
-		// For masterchef
-		// if (address == MASTERCHEF) {
-		// 	rewarder.point = "BLOCK";
-		// 	const rewardTokenCall = rewarderContract.try_sushi();
-		// 	if (!rewardTokenCall.reverted) {
-		// 		rewarder.rewardToken = rewardTokenCall.value;
-		// 	}
 
-		// 	const sushiPerBlockCall = rewarderContract.try_sushiPerBlock();
-		// 	if (!sushiPerBlockCall.reverted) {
-		// 		rewarder.rewardPerPoint = sushiPerBlockCall.value;
-		// 	}
-
-		// 	const totalAllocationCall = rewarderContract.try_totalAllocPoint();
-		// 	if (!totalAllocationCall.reverted) {
-		// 		rewarder.totalAllocation = totalAllocationCall.value;
-		// 	}
-		// }
-		// For masterchef v2
-		if (address == MASTERCHEFV2) {
-			rewarder.point = "BLOCK";
-			const rewardTokenCall = rewarderContract.try_SUSHI();
+		/* -------------------------------------------------------------------------- */
+		/*                                Reward Token                                */
+		/* -------------------------------------------------------------------------- */
+		let rewardTokenCall = rewarderContract.try_sushi();
+		if (!rewardTokenCall.reverted) {
+			rewarder.rewardToken = rewardTokenCall.value;
+		} else {
+			rewardTokenCall = rewarderContract.try_SUSHI();
 			if (!rewardTokenCall.reverted) {
 				rewarder.rewardToken = rewardTokenCall.value;
-			}
-
-			const sushiPerBlockCall = rewarderContract.try_sushiPerBlock();
-			if (!sushiPerBlockCall.reverted) {
-				rewarder.rewardPerPoint = sushiPerBlockCall.value;
-			}
-
-			const totalAllocationCall = rewarderContract.try_totalAllocPoint();
-			if (!totalAllocationCall.reverted) {
-				rewarder.totalAllocation = totalAllocationCall.value;
-			}
-		}
-		// For minchef
-		else if (MINICHEFS.includes(address)) {
-			rewarder.point = "SECOND";
-			const rewardTokenCall = rewarderContract.try_SUSHI();
-			if (!rewardTokenCall.reverted) {
-				rewarder.rewardToken = rewardTokenCall.value;
-			}
-
-			const sushiPerBlockCall = rewarderContract.try_sushiPerSecond();
-			if (!sushiPerBlockCall.reverted) {
-				rewarder.rewardPerPoint = sushiPerBlockCall.value;
-			}
-
-			const totalAllocationCall = rewarderContract.try_totalAllocPoint();
-			if (!totalAllocationCall.reverted) {
-				rewarder.totalAllocation = totalAllocationCall.value;
-			}
-		}
-		// For all clone and complex rewarders
-		else {
-			rewarder.point = "SECOND";
-			const rewardTokenCall = rewarderContract.try_rewardToken();
-			if (!rewardTokenCall.reverted) {
-				rewarder.rewardToken = rewardTokenCall.value;
-			}
-
-			let sushiPerBlockCall = rewarderContract.try_rewardPerSecond();
-			if (!sushiPerBlockCall.reverted) {
-				rewarder.rewardPerPoint = sushiPerBlockCall.value;
 			} else {
-				sushiPerBlockCall = rewarderContract.try_rewardRate();
-				if (!sushiPerBlockCall.reverted) {
-					rewarder.rewardPerPoint = sushiPerBlockCall.value;
+				rewardTokenCall = rewarderContract.try_rewardToken();
+				if (!rewardTokenCall.reverted) {
+					rewarder.rewardToken = rewardTokenCall.value;
 				}
 			}
+		}
 
+		/* -------------------------------------------------------------------------- */
+		/*                                 Reward Rate                                */
+		/* -------------------------------------------------------------------------- */
+		let sushiPerPointCall = rewarderContract.try_sushiPerBlock();
+		if (!sushiPerPointCall.reverted) {
+			rewarder.rewardPerPoint = sushiPerPointCall.value;
+			rewarder.point = "BLOCK";
+		} else {
+			sushiPerPointCall = rewarderContract.try_sushiPerSecond();
+			if (!sushiPerPointCall.reverted) {
+				rewarder.rewardPerPoint = sushiPerPointCall.value;
+				rewarder.point = "SECOND";
+			} else {
+				sushiPerPointCall = rewarderContract.try_rewardPerSecond();
+				if (!sushiPerPointCall.reverted) {
+					rewarder.rewardPerPoint = sushiPerPointCall.value;
+					rewarder.point = "SECOND";
+				} else {
+					sushiPerPointCall = rewarderContract.try_rewardRate();
+					if (!sushiPerPointCall.reverted) {
+						rewarder.rewardPerPoint = sushiPerPointCall.value;
+						rewarder.point = "SECOND";
+					} else {
+						rewarder.rewardPerPoint = ZERO_BI;
+						rewarder.point = "UNKNOWN";
+					}
+				}
+			}
+		}
+
+		const totalAllocationCall = rewarderContract.try_totalAllocPoint();
+		if (!totalAllocationCall.reverted) {
+			rewarder.totalAllocation = totalAllocationCall.value;
+		} else {
 			rewarder.totalAllocation = ONE_BI;
+		}
 
+		if (rewarder.id !== dataSource.address().toHex()) {
 			RewarderTemplate.create(Address.fromString(rewarder.id));
 		}
-		// TODO cover ConvexRewarder, LIDORewarder, etc contract
-		rewarder.save();
 	}
 
 	rewarder.timestamp = block.timestamp;
@@ -120,7 +94,7 @@ export function getRewarderPool(
 	let rewarderPool = RewarderPool.load(rid);
 	if (!rewarderPool) {
 		rewarderPool = new RewarderPool(rid);
-		
+
 		rewarderPool.rewarder = rewarder.toHex();
 		rewarderPool.pool = pid.toString();
 

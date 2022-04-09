@@ -30,7 +30,8 @@
         "prepare:fuse": "mustache config/fuse.json template.yaml > subgraph.yaml",
         "prepare:moonbeam": "mustache config/moonbeam.json template.yaml > subgraph.yaml",
         "prepare:fantom": "mustache config/fantom.json template.yaml > subgraph.yaml",
-        "prepare:mainnet": "mustache config/mainnet.json template.yaml > subgraph.yaml"
+        "prepare:mainnet": "mustache config/mainnet.json template.yaml > subgraph.yaml",
+        "prepare:mainnetv2": "mustache config/mainnet.json template.yaml > subgraph.yaml"
     },
     "dependencies": {
         "@sushiswap/core": "^1.4.2",

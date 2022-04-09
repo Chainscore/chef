@@ -4,9 +4,12 @@ type Pool @entity {
 	id: ID!
 	lpToken: Bytes!
 
-	rewarders: [Rewarder!]! @derivedFrom(field: "pool")
-	rewarderPools: [RewarderPool!]! @derivedFrom(field: "pool")
+	# rewarders: [Rewarder!]! @derivedFrom(field: "pool")
+	# rewarderPools: [RewarderPool!]! @derivedFrom(field: "pool")
 	slpBalance: BigInt!
+
+	sushiRewarder: RewarderPool
+	tokenRewarder: RewarderPool
 
 	users: [UserPool!]! @derivedFrom(field: "pool")
 
@@ -17,6 +20,7 @@ type Pool @entity {
 enum Point {
 	BLOCK 
 	SECOND
+	UNKNOWN
 }
 
 type Rewarder @entity {
@@ -30,7 +34,6 @@ type Rewarder @entity {
 	rewardPerPoint: BigInt!
 
 	rewarderPools: [RewarderPool!]! @derivedFrom(field: "rewarder")
-	pool: Pool
 
 	timestamp: BigInt!
 	block: BigInt!
